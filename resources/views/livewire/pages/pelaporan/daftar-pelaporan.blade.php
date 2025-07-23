@@ -104,16 +104,20 @@
         <div class="text-gray-500 italic">Tidak ada kegiatan ditemukan untuk tahun ini.</div>
     @endforelse
 
-    @foreach ($requiredBerkas as $jenis => $listBerkas)
-    <h4>{{ strtoupper($jenis) }}</h4>
-    @foreach ($listBerkas as $nama)
-        <label>{{ $nama }}</label>
-        <input type="file" wire:model="berkas_per_jenis.{{ $jenis }}.{{ $nama }}">
-    @endforeach
-@endforeach
+    <!-- List Preview Berkas Sudah Diunggah -->
+    @if ($pelaporan_id_aktif)
+        <div class="mt-4 bg-gray-50 border p-4 rounded">
+            <h3 class="text-sm font-semibold mb-2">Berkas Yang Telah Diunggah</h3>
+            <ul class="text-sm list-disc ml-5 space-y-1">
+                @foreach ($requiredBerkas as $jenis => $berkasList)
+                    @foreach ($berkasList as $nama)
+                        <li>{{ strtoupper($jenis) }} - {{ $nama }}</li>
+                    @endforeach
+                @endforeach
+            </ul>
+        </div>
+    @endif
 
-
-    <!-- Modal -->
+    <!-- Modal Tambah/Edit -->
     @include('livewire.pages.pelaporan.modal-form')
-
 </div>

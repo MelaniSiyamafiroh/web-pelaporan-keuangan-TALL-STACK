@@ -26,14 +26,9 @@ return new class extends Migration
             $table->foreignId('subkegiatan_id')
                 ->constrained('subkegiatans')
                 ->onDelete('cascade');
-
-            // Jenis belanja tetap dengan enum
-            $table->enum('jenis_belanja', [
-                'SPJ GU',
-                'SPJ GU Tunai',
-                'Belanja Tenaga Ahli'
-            ]);
-
+            $table->foreignId('jenis_belanja_id')
+                ->constrained('jenis_belanja_pelaporans')
+                ->onDelete('cascade');
             $table->string('rekening_kegiatan', 100);
             $table->year('tahun')->nullable(); // ✅ TANPA after()
 

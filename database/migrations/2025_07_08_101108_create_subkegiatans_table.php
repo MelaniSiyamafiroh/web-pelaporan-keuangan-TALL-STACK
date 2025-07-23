@@ -17,7 +17,8 @@ return new class extends Migration
             // Menggunakan foreignId agar otomatis unsignedBigInteger + index + foreign
             $table->foreignId('kegiatan_id')
                 ->constrained('kegiatans')
-                ->onDelete('cascade'); // Hapus subkegiatan jika kegiatan dihapus
+                ->onDelete('cascade');
+             // Hapus subkegiatan jika kegiatan dihapus
 
             $table->string('nama_subkegiatan', 255)->nullable();
             $table->year('tahun_anggaran');

@@ -20,8 +20,8 @@
     </div>
 
     <!-- Filter -->
-    <div class="flex flex-col md:flex-row md:items-center gap-2 mb-4">
-        <div class="flex-1">
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-2 mb-4">
+        <div>
             <select wire:model.defer="satuanKerja" class="form-select w-full mt-1">
                 <option value="">-- Semua SKPD --</option>
                 @foreach(\App\Models\SatuanKerja::all() as $sk)
@@ -29,22 +29,33 @@
                 @endforeach
             </select>
         </div>
-        <div class="flex-1">
-            <select wire:model="tahun" class="form-select w-full">
+        <div>
+            <select wire:model.defer="tahun" class="form-select w-full">
                 <option value="">-- Semua Tahun --</option>
                 @for ($i = date('Y'); $i >= 2020; $i--)
                     <option value="{{ $i }}">{{ $i }}</option>
                 @endfor
             </select>
         </div>
-        <div class="flex-1">
-            <select wire:model="sort" class="form-select w-full">
+        <div>
+            <select wire:model.defer="sort" class="form-select w-full">
                 <option value="created_desc">Terbaru</option>
                 <option value="created_asc">Terlama</option>
                 <option value="nama_asc">Nama A-Z</option>
                 <option value="nama_desc">Nama Z-A</option>
             </select>
         </div>
+        <div>
+            <button wire:click="$refresh"
+                class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg">
+                Terapkan Filter
+            </button>
+        </div>
+    </div>
+
+    <!-- Loading -->
+    <div wire:loading.flex class="justify-center py-4 text-gray-500">
+        Memuat data kegiatan...
     </div>
 
     <!-- Tabel -->
@@ -61,7 +72,7 @@
             </thead>
             <tbody class="bg-white divide-y divide-gray-100">
                 @forelse ($kegiatan as $index => $data)
-                    <tr>
+                    <tr wire:key="kegiatan-{{ $data->id }}">
                         <td class="px-6 py-4">{{ $index + 1 + ($kegiatan->currentPage() - 1) * $kegiatan->perPage() }}</td>
                         <td class="px-6 py-4 uppercase">{{ $data->satuanKerja->nama ?? '-' }}</td>
                         <td class="px-6 py-4">{{ $data->nama_kegiatan }}</td>

@@ -15,7 +15,9 @@ return new class extends Migration
             $table->id();
             $table->string('nama_kegiatan', 255);
             $table->year('tahun');
-            $table->string('satuan_kerja', 100)->nullable(); // fleksibel, bisa enum jika 100% statis
+            $table->foreignId('satuan_kerja_id')
+                ->constrained('satuan_kerjas')
+                ->onDelete('cascade');
             $table->string('kode_kegiatan')->nullable()->unique(); // opsional
             $table->timestamps(); // created_at & updated_at
         });

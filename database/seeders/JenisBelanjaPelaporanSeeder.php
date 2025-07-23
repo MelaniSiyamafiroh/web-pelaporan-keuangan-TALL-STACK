@@ -6,7 +6,7 @@ use Illuminate\Database\Seeder;
 use App\Models\JenisBelanjaPelaporan;
 use App\Models\TemplateBerkasBelanja;
 
-class TemplateBerkasBelanjaSeeder extends Seeder
+class JenisBelanjaPelaporanSeeder extends Seeder
 {
     public function run(): void
     {
@@ -18,12 +18,14 @@ class TemplateBerkasBelanjaSeeder extends Seeder
         ];
 
         foreach ($data as $jenis => $berkasList) {
+            // Buat jenis belanja (pastikan kolom yang digunakan adalah 'nama')
             $jenisBelanja = JenisBelanjaPelaporan::firstOrCreate(['nama' => $jenis]);
 
-            foreach ($berkasList as $berkas) {
+            // Buat template berkas sesuai jenis belanja
+            foreach ($berkasList as $namaBerkas) {
                 TemplateBerkasBelanja::firstOrCreate([
                     'jenis_belanja_id' => $jenisBelanja->id,
-                    'nama_berkas' => $berkas,
+                    'nama_berkas' => $namaBerkas
                 ]);
             }
         }

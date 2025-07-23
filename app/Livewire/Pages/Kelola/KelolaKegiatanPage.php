@@ -12,33 +12,31 @@ class KelolaKegiatanPage extends Component
 {
     use WithPagination;
 
+    // Filter dan Pagination
     public $search = '';
     public $sort = 'created_desc';
     public $satuanKerja = '';
     public $tahun = '';
     public $perPage = 10;
 
-    // Form input
+    // Form Input
     public $kegiatanId;
     public $nama_kegiatan;
     public $formSatuanKerja;
     public $formTahun;
 
-    //livewire cek, saat simpan data
     protected $rules = [
         'formSatuanKerja' => 'required|exists:satuan_kerjas,id',
         'nama_kegiatan' => 'required|string|max:255',
         'formTahun' => 'required|integer',
     ];
 
-    //fungsi yang langsung jalan
     public function mount()
     {
         $this->tahun = session('tahun_aktif');
         $this->formTahun = session('tahun_aktif');
     }
 
-    //fungsi yang ambil data kegiatan serta relasi ke satuan kerja
     public function render()
     {
         $query = Kegiatan::with('satuanKerja');
@@ -70,54 +68,44 @@ class KelolaKegiatanPage extends Component
                 break;
         }
 
-        //mengirim kembali ke tampilan
         return view('livewire.pages.kelola.kelola-kegiatan-page', [
-            'kegiatan' => $query->paginate($this->perPage), //data kegiatan hasil query+paginate
-            'daftarSatuanKerja' => SatuanKerja::all(), //semua data satker
+            'kegiatan' => $query->paginate($this->perPage),
+            'daftarSatuanKerja' => SatuanKerja::all(),
         ]);
     }
 
-    //fungsi save
     public function save()
-{
-    Log::info('Tombol simpan ditekan');
+    {
+        $validated = $this->validate();
 
-    $validated = $this->validate();
-    Log::info('Validasi berhasil', $validated);
+        try {
+            $sk = SatuanKerja::findOrFail($this->formSatuanKerja);
 
-    try {
-        $sk = SatuanKerja::findOrFail($this->formSatuanKerja);
-        Log::info('Nama SK: ', ['nama' => $sk->nama]);
+            if ($this->kegiatanId) {
+                // Update Kegiatan
+                Kegiatan::findOrFail($this->kegiatanId)->update([
+                    'satuan_kerja_id' => $sk->id,
+                    'nama_kegiatan' => $this->nama_kegiatan,
+                    'tahun' => $this->formTahun,
+                ]);
+                session()->flash('success', 'Kegiatan berhasil diperbarui.');
+            } else {
+                // Create Kegiatan
+                Kegiatan::create([
+                    'satuan_kerja_id' => $sk->id,
+                    'nama_kegiatan' => $this->nama_kegiatan,
+                    'tahun' => $this->formTahun,
+                ]);
+                session()->flash('success', 'Kegiatan berhasil disimpan.');
+            }
 
-        //cek jika ada kegiatanId itu berarti update data, jika bukan berarti tambah data
-        if ($this->kegiatanId) {
-            Log::info('Mode: Edit');
-            Kegiatan::findOrFail($this->kegiatanId)->update([
-                'satuan_kerja_id' => $sk->id,
-                'satuan_kerja' => $sk->nama,
-                'nama_kegiatan' => $this->nama_kegiatan,
-                'tahun' => $this->formTahun,
-            ]);
-            session()->flash('success', 'Kegiatan berhasil diperbarui.');
-        } else {
-            Log::info('Mode: Create');
-            Kegiatan::create([
-                'satuan_kerja_id' => $sk->id,
-                'satuan_kerja' => $sk->nama,
-                'nama_kegiatan' => $this->nama_kegiatan,
-                'tahun' => $this->formTahun,
-            ]);
-            session()->flash('success', 'Kegiatan berhasil disimpan.'); //notif berhasil simpan
+            $this->resetForm();
+        } catch (\Exception $e) {
+            Log::error('Gagal simpan kegiatan: ' . $e->getMessage());
+            session()->flash('error', 'Gagal menyimpan kegiatan: ' . $e->getMessage());
         }
-
-        $this->resetForm(); //form direset biar kosong lagi
-    } catch (\Exception $e) {
-        Log::error('Gagal simpan kegiatan: ' . $e->getMessage());
-        session()->flash('error', 'Gagal menyimpan kegiatan: ' . $e->getMessage()); //cek log gagal
     }
-}
 
-    //fungsi edit
     public function edit($id)
     {
         $kegiatan = Kegiatan::findOrFail($id);
@@ -127,14 +115,12 @@ class KelolaKegiatanPage extends Component
         $this->formTahun = $kegiatan->tahun;
     }
 
-    //fungsi hapus
     public function delete($id)
     {
         Kegiatan::findOrFail($id)->delete();
         session()->flash('success', 'Kegiatan berhasil dihapus.');
     }
 
-    //mengkosongkan form
     private function resetForm()
     {
         $this->reset(['kegiatanId', 'nama_kegiatan', 'formSatuanKerja', 'formTahun']);

@@ -14,25 +14,30 @@ class KelolaSubkegiatanPage extends Component
     public $search = '';
     public $sort = 'created_desc';
 
-    public $kegiatan_id = '';              // Untuk filter dropdown
-    public $filter_tahun_anggaran = '';    // Untuk filter tabel
+    public $kegiatan_id = '';
+    public $filter_tahun_anggaran = '';
 
     public $nama_subkegiatan;
-    public $tahun_anggaran;               // Untuk input form
+    public $tahun_anggaran;
+    public $rekening;
+    public $jumlah_pagu;
+
     public $edit_id = null;
 
     protected $rules = [
         'nama_subkegiatan' => 'required|string|max:255',
         'kegiatan_id' => 'required|exists:kegiatans,id',
         'tahun_anggaran' => 'required|integer',
+        'rekening' => 'required|string|max:100',
+        'jumlah_pagu' => 'required|numeric|min:0',
     ];
 
     protected $paginationTheme = 'tailwind';
 
     public function mount()
     {
-        $this->filter_tahun_anggaran = session('tahun_aktif'); // default filter
-        $this->tahun_anggaran = session('tahun_aktif');         // default form input
+        $this->filter_tahun_anggaran = session('tahun_aktif');
+        $this->tahun_anggaran = session('tahun_aktif');
     }
 
     public function render()
@@ -68,7 +73,7 @@ class KelolaSubkegiatanPage extends Component
 
         return view('livewire.pages.kelola.kelola-subkegiatan-page', [
             'subkegiatan' => $query->paginate(10),
-            'kegiatan' => Kegiatan::where('tahun', session('tahun_aktif'))->get(),
+            'kegiatan' => Kegiatan::all(),
         ]);
     }
 
@@ -81,6 +86,8 @@ class KelolaSubkegiatanPage extends Component
                 'nama_subkegiatan' => $validated['nama_subkegiatan'],
                 'kegiatan_id' => $validated['kegiatan_id'],
                 'tahun_anggaran' => $validated['tahun_anggaran'],
+                'rekening' => $validated['rekening'],
+                'jumlah_pagu' => $validated['jumlah_pagu'],
             ]);
             session()->flash('success', 'Sub Kegiatan berhasil ditambahkan.');
             $this->resetForm();
@@ -96,6 +103,8 @@ class KelolaSubkegiatanPage extends Component
         $this->nama_subkegiatan = $data->nama_subkegiatan;
         $this->kegiatan_id = $data->kegiatan_id;
         $this->tahun_anggaran = $data->tahun_anggaran;
+        $this->rekening = $data->rekening;
+        $this->jumlah_pagu = $data->jumlah_pagu;
     }
 
     public function update()
@@ -108,6 +117,8 @@ class KelolaSubkegiatanPage extends Component
                 'nama_subkegiatan' => $validated['nama_subkegiatan'],
                 'kegiatan_id' => $validated['kegiatan_id'],
                 'tahun_anggaran' => $validated['tahun_anggaran'],
+                'rekening' => $validated['rekening'],
+                'jumlah_pagu' => $validated['jumlah_pagu'],
             ]);
             session()->flash('success', 'Sub Kegiatan berhasil diperbarui.');
             $this->resetForm();
@@ -131,7 +142,9 @@ class KelolaSubkegiatanPage extends Component
         $this->edit_id = null;
         $this->nama_subkegiatan = '';
         $this->kegiatan_id = '';
-        $this->tahun_anggaran = session('tahun_aktif'); // default input
+        $this->tahun_anggaran = session('tahun_aktif');
+        $this->rekening = '';
+        $this->jumlah_pagu = '';
     }
 
     // Reset pagination saat filter berubah

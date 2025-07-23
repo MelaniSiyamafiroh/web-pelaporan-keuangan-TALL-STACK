@@ -21,8 +21,9 @@ class DatabaseSeeder extends Seeder
             SatuanKerjaSeeder::class,
             SettingSeeder::class,
             UserSeeder::class,
+            JenisBelanjaPelaporanSeeder::class,
+            TemplateBerkasBelanjaSeeder::class,
             DummyTahunSeeder::class,
-            TemplateBerkasBelanjaSeeder::class
         ]);
     }
 }

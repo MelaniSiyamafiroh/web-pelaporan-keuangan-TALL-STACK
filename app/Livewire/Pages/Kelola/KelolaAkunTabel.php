@@ -1,95 +1,74 @@
 <?php
 
-namespace App\Livewire\Pages\Kelola;
+namespace App\Livewire\Pages\User;
 
-use Livewire\Component;
-use Livewire\WithPagination;
 use App\Models\User;
-use Illuminate\Support\Facades\Hash;
+use Illuminate\Database\Eloquent\Builder;
+use Livewire\Attributes\On;
+use Rappasoft\LaravelLivewireTables\DataTableComponent;
+use Rappasoft\LaravelLivewireTables\Views\Column;
 
-class KelolaAkunTabel extends Component
+class KelolaAkunTabel extends DataTableComponent
 {
-    use WithPagination;
+    protected $model = User::class;
 
-    public $search = '';
-    public $sort = 'created_desc';
+    public string $search = '';
+    public string $roleFilter = ''; // untuk dropdown filter role
 
-    // Form fields
-    public $name;
-    public $email;
-    public $role;
-    public $password;
-
-    protected $rules = [
-        'name'     => 'required|string|max:255',
-        'email'    => 'required|email|unique:users,email',
-        'role'     => 'required|string',
-        'password' => 'required|min:6',
-    ];
-
-    public function render()
+    public function configure(): void
     {
-        $query = User::query();
+        $this->setPrimaryKey('id');
+        $this->setSearchEnabled(); // aktifkan pencarian global
+        $this->setPaginationEnabled(); // aktifkan pagination
+    }
 
-        if ($this->search) {
-            $query->where('name', 'like', '%' . $this->search . '%');
+    public function builder(): Builder
+    {
+        $query = User::query()->with(['satuanKerja', 'roles']);
+
+        // Jika filtering berdasarkan role
+        if ($this->roleFilter) {
+            $query->whereHas('roles', function ($q) {
+                $q->where('name', $this->roleFilter);
+            });
         }
 
-        switch ($this->sort) {
-            case 'created_asc':
-                $query->orderBy('created_at', 'asc');
-                break;
-            case 'name_asc':
-                $query->orderBy('name', 'asc');
-                break;
-            case 'name_desc':
-                $query->orderBy('name', 'desc');
-                break;
-            default:
-                $query->orderBy('created_at', 'desc');
-                break;
-        }
-
-        $users = $query->paginate(10);
-
-        return view('livewire.pages.kelola.kelola-akun-action', [
-            'users' => $users,
-        ]);
+        return $query->latest(); // default sorting by created_at desc
     }
 
-    public function applyFilter()
+    #[On('refresh')]
+    public function refresh()
     {
-        // Reset pagination saat filter diterapkan
-        $this->resetPage();
+        $this->dispatch('$refresh');
     }
 
-    public function store()
+    public function columns(): array
     {
-        $this->validate();
+        return [
+            Column::make("Nama", "name")
+                ->sortable()
+                ->searchable(),
 
-        User::create([
-            'name'     => $this->name,
-            'email'    => $this->email,
-            'role'     => $this->role,
-            'password' => Hash::make($this->password),
-        ]);
+            Column::make("Email", "email")
+                ->collapseOnMobile()
+                ->searchable(),
 
-        $this->resetForm();
-        session()->flash('success', 'Akun berhasil ditambahkan.');
-        $this->dispatch('closeModal'); // optional: jika pakai event untuk close modal
-    }
+            Column::make("Satuan Kerja")
+                ->label(fn($row) => $row->satuanKerja->nama ?? '-')
+                ->collapseOnMobile(),
 
-    public function destroy($id)
-    {
-        User::findOrFail($id)->delete();
-        session()->flash('success', 'Akun berhasil dihapus.');
-    }
+            Column::make("Role")
+                ->label(fn($row) => $row->roles->pluck('name')->implode(', ') ?: '-')
+                ->collapseOnMobile(),
 
-    public function resetForm()
-    {
-        $this->name = '';
-        $this->email = '';
-        $this->role = '';
-        $this->password = '';
+            Column::make("Dibuat", "created_at")
+                ->sortable()
+                ->collapseOnMobile()
+                ->deselected(), // sembunyikan secara default
+
+            Column::make("Aksi", "id")
+                ->label(fn($row) => view('livewire.pages.kelola.kelola-akun-action', ['value' => $row->id]))
+                ->collapseOnMobile(),
+        ];
     }
 }

@@ -1,5 +1,4 @@
-<div class="max-w-7xl mx-auto p-6" x-data="{ openModal: false }">
-
+<div class="max-w-7xl mx-auto p-6" x-data="{ openModal: false }" @open-modal.window="openModal = true" @close-modal.window="openModal = false">
     <!-- Heading & Button -->
     <div class="flex justify-between items-center mb-6">
         <h2 class="text-xl font-semibold text-gray-700">Data Akun</h2>
@@ -45,6 +44,7 @@
                     <th class="px-6 py-4">Nama</th>
                     <th class="px-6 py-4">Email</th>
                     <th class="px-6 py-4">Role</th>
+                    <th class="px-6 py-4">Satuan Kerja</th>
                     <th class="px-6 py-4">Aksi</th>
                 </tr>
             </thead>
@@ -54,17 +54,30 @@
                         <td class="px-6 py-4">{{ $loop->iteration + ($users->currentPage() - 1) * $users->perPage() }}</td>
                         <td class="px-6 py-4">{{ $user->name }}</td>
                         <td class="px-6 py-4">{{ $user->email }}</td>
-                        <td class="px-6 py-4">{{ $user->role }}</td>
-                        <td class="px-6 py-4 flex gap-2">
-                            <button wire:click="$emit('editUser', {{ $user->id }})"
-                                class="text-yellow-500 hover:text-yellow-700">
-                                <i class="fas fa-edit fa-lg"></i>
-                            </button>
-                            <button wire:click="destroy({{ $user->id }})"
-                                class="text-red-600 hover:text-red-800">
-                                <i class="fas fa-trash fa-lg"></i>
-                            </button>
-                        </td>
+                        <td class="px-6 py-4">{{ $user->getRoleNames()->implode(', ') }}</td>
+                        <td class="px-6 py-4">{{ $user->satuanKerja->nama ?? '-' }}</td>
+                        <td class="px-6 py-4">
+    <div class="flex items-center gap-2">
+        <button
+            wire:click="$emit('edit', {{ $user->id }})"
+            class="p-1 rounded-full bg-yellow-400 hover:bg-yellow-500 text-white"
+            title="Edit Akun"
+        >
+            <i class="fas fa-edit fa-sm"></i>
+        </button>
+
+        <button
+    wire:click="destroy({{ $user->id }})"
+    onclick="confirm('Yakin ingin menghapus akun ini?') || event.stopImmediatePropagation()"
+    class="p-1 rounded-full bg-red-500 hover:bg-red-600 text-white"
+    title="Hapus Akun"
+>
+    <i class="fas fa-trash fa-sm"></i>
+</button>
+
+    </div>
+</td>
+
                     </tr>
                 @endforeach
             </tbody>
@@ -75,27 +88,52 @@
         {{ $users->links() }}
     </div>
 
-    <!-- Modal Form Tambah Akun -->
-    <div x-show="openModal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50"
-        x-transition>
-        <div @click.away="openModal = false"
-            class="bg-white rounded-lg p-6 w-full max-w-md shadow-xl">
-            <h3 class="text-lg font-semibold mb-4">Tambah Akun</h3>
+    <!-- Modal Form Tambah/Edit Akun -->
+    <div x-show="openModal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50" x-transition>
+        <div @click.away="openModal = false" class="bg-white rounded-lg p-6 w-full max-w-md shadow-xl">
+            <h3 class="text-lg font-semibold mb-4" x-text="$wire.editing_id ? 'Edit Akun' : 'Tambah Akun'"></h3>
             <div class="space-y-3">
                 <input type="text" wire:model.defer="name" placeholder="Nama"
                     class="w-full border rounded px-3 py-2 text-sm focus:ring focus:ring-blue-200">
+
                 <input type="email" wire:model.defer="email" placeholder="Email"
                     class="w-full border rounded px-3 py-2 text-sm focus:ring focus:ring-blue-200">
-                <input type="text" wire:model.defer="role" placeholder="Role"
-                    class="w-full border rounded px-3 py-2 text-sm focus:ring focus:ring-blue-200">
+
+                <select wire:model.defer="role" class="w-full border rounded px-3 py-2 text-sm">
+                    <option value="">Pilih Role</option>
+                    @foreach($allRoles as $r)
+                        <option value="{{ $r }}">{{ $r }}</option>
+                    @endforeach
+                </select>
+
+                <select wire:model.defer="satuan_kerja_id" class="w-full border rounded px-3 py-2 text-sm">
+                    <option value="">Pilih Satuan Kerja</option>
+                    @foreach($allSatuanKerja as $sk)
+                        <option value="{{ $sk->id }}">{{ $sk->nama }}</option>
+                    @endforeach
+                </select>
+
                 <input type="password" wire:model.defer="password" placeholder="Password"
                     class="w-full border rounded px-3 py-2 text-sm focus:ring focus:ring-blue-200">
             </div>
+
             <div class="flex justify-end gap-2 mt-4">
                 <button @click="openModal = false"
                     class="bg-gray-400 hover:bg-gray-500 text-white px-4 py-2 rounded shadow text-sm">Batal</button>
-                <button wire:click="store"
-                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow text-sm">Simpan</button>
+
+                <button
+                    x-show="$wire.editing_id === null"
+                    wire:click="store"
+                    class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded shadow text-sm">
+                    Simpan
+                </button>
+
+                <button
+                    x-show="$wire.editing_id !== null"
+                    wire:click="update"
+                    class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded shadow text-sm">
+                    Update
+                </button>
             </div>
         </div>
     </div>

@@ -6,14 +6,12 @@ use App\Models\Kegiatan;
 use App\Models\Pelaporan;
 use App\Models\Subkegiatan;
 use App\Models\User;
-use App\Models\SatuanKerja;
 use App\Models\BerkasPelaporan;
-use Illuminate\Support\Facades\Auth;
+use App\Models\TemplateBerkasBelanja;
+use App\Models\JenisBelanjaPelaporan;
 use Livewire\Component;
 use Livewire\WithFileUploads;
-use App\Models\TemplateBerkasBelanja;
-
-
+use Illuminate\Support\Facades\Auth;
 
 class DaftarPelaporan extends Component
 {
@@ -30,20 +28,17 @@ class DaftarPelaporan extends Component
     // Form
     public $showModal = false;
     public $pptk_id, $kegiatan_id, $subkegiatan_id;
-    public $jenis_belanja, $rekening_kegiatan, $nominal_pagu, $nominal;
+    public $rekening_kegiatan, $nominal_pagu, $nominal;
     public $file_upload, $catatan = '-';
 
-    // 🆕 Tambahan untuk validasi & simpan berkas dinamis
-    public $requiredBerkas = ['RAB', 'SPJ', 'Foto'];
-    public $berkas = [];
-    public $jenis_belanja_terpilih = []; // [spj_gu, spj_gu_tunai]
-    public $berkas_per_jenis = []; // nested: ['spj_gu' => ['A2' => File, ...]]
-    public $jenis_dipilih;       // untuk dropdown upload
+    // Upload Dinamis
+    public $jenis_belanja_terpilih = [];
+    public $requiredBerkas = [];
+    public $berkas_per_jenis = [];
+    public $jenis_dipilih;
     public $nama_berkas_dipilih;
     public $berkas_upload;
     public $pelaporan_id_aktif;
-
-
 
     protected $queryString = [
         'search' => ['except' => ''],
@@ -56,7 +51,8 @@ class DaftarPelaporan extends Component
 
     public function mount()
     {
-        $this->tahun = session('tahun_aktif') ?? now()->year;
+        $this->tahun = now()->year;
+        $this->jenis_belanja_terpilih = JenisBelanjaPelaporan::pluck('nama')->toArray();
     }
 
     public function rules()
@@ -65,14 +61,13 @@ class DaftarPelaporan extends Component
             'pptk_id'           => 'required|exists:users,id',
             'kegiatan_id'       => 'required|exists:kegiatans,id',
             'subkegiatan_id'    => 'required|exists:subkegiatans,id',
-            'jenis_belanja'     => 'required|string|max:100',
+            'jenis_dipilih'     => 'required|string|max:100',
             'rekening_kegiatan' => 'required|string|max:255',
             'tahun_input'       => 'required|numeric|min:2000|max:2100',
             'nominal_pagu'      => 'required|numeric|min:0',
             'nominal'           => 'required|numeric|min:0|lte:nominal_pagu',
         ];
 
-        // Hanya wajib upload file jika tambah baru
         if (!$this->editingId) {
             $rules['file_upload'] = 'required|file|mimes:pdf|max:5120';
         }
@@ -105,76 +100,144 @@ class DaftarPelaporan extends Component
         $laporan = $query->get();
 
         $pptks = User::role('pptk')->get();
-        $kegiatans = Kegiatan::where('tahun', $this->tahun)->get();
-        $subkegiatans = Subkegiatan::where('tahun_anggaran', $this->tahun)->get();
-
-        $this->requiredBerkas = []; // reset dulu
-
-$templates = TemplateBerkasBelanja::whereIn('jenis_belanja', $this->jenis_belanja_terpilih)->get();
-
-foreach ($templates as $template) {
-    // ✅ ini penting: gunakan [] untuk menjadikan array
-    $this->requiredBerkas[$template->jenis_belanja][] = $template->nama_berkas;
-}
-
+        $kegiatans = Kegiatan::all();
+        $subkegiatans = Subkegiatan::all();
 
         return view('livewire.pages.pelaporan.daftar-pelaporan', compact(
             'laporan', 'pptks', 'kegiatans', 'subkegiatans'
         ));
     }
 
-    public function submit()
-{
-    $this->validate($this->rules());
-
-    if ($this->editingId) {
-        // proses update seperti biasa...
-    } else {
-        // ✅ Validasi file dinamis
-        foreach ($this->requiredBerkas as $jenis => $list) {
-            foreach ($list as $nama) {
-                $this->validate([
-                    'berkas_per_jenis.' . $jenis . '.' . $nama => 'required|file|mimes:pdf|max:5120',
-                ]);
-            }
+    public function updatedSubkegiatanId($value)
+    {
+        $sub = Subkegiatan::find($value);
+        if ($sub) {
+            $this->rekening_kegiatan = $sub->rekening;
+            $this->nominal_pagu = $sub->jumlah_pagu;
+        } else {
+            $this->rekening_kegiatan = '';
+            $this->nominal_pagu = 0;
         }
-
-        // ✅ Simpan pelaporan utama
-        $filePath = $this->file_upload->store('pelaporan', 'public');
-
-        $pelaporan = Pelaporan::create([
-            'pptk_id'           => $this->pptk_id,
-            'kegiatan_id'       => $this->kegiatan_id,
-            'subkegiatan_id'    => $this->subkegiatan_id,
-            'jenis_belanja'     => implode(',', $this->jenis_belanja_terpilih), // bisa disimpan sebagai string atau dibuat tabel pivot nanti
-            'rekening_kegiatan' => $this->rekening_kegiatan,
-            'tahun'             => $this->tahun_input,
-            'nominal_pagu'      => $this->nominal_pagu,
-            'nominal'           => $this->nominal,
-            'status'            => 'Diajukan',
-            'file_path'         => $filePath,
-            'catatan'           => $this->catatan,
-        ]);
-
-        // ✅ Simpan berkas ke tabel berkas_pelaporan
-        foreach ($this->berkas_per_jenis as $jenis => $files) {
-            foreach ($files as $nama => $file) {
-                $path = $file->store('pelaporan', 'public');
-
-                BerkasPelaporan::create([
-                    'pelaporan_id' => $pelaporan->id,
-                    'jenis_belanja' => $jenis,
-                    'nama_berkas' => $nama,
-                    'file_path' => $path,
-                ]);
-            }
-        }
-
-        $this->dispatch('notify', title: 'Pelaporan berhasil disimpan.');
-        $this->pelaporan_id_aktif = $pelaporan->id;
-
     }
 
+    public function updatedJenisDipilih()
+    {
+        $this->requiredBerkas = [];
+
+        if ($this->jenis_dipilih) {
+            $jenis = JenisBelanjaPelaporan::where('nama', $this->jenis_dipilih)->first();
+
+            if ($jenis) {
+                $templates = TemplateBerkasBelanja::where('jenis_belanja_id', $jenis->id)->get();
+
+                foreach ($templates as $item) {
+                    $this->requiredBerkas[$this->jenis_dipilih][] = $item->nama_berkas;
+                }
+            }
+        }
+    }
+
+    public function uploadSatuBerkas()
+{
+    if (!$this->pelaporan_id_aktif) {
+        $this->addError('berkas_upload', 'Pelaporan belum disimpan. Simpan dulu sebelum mengunggah berkas.');
+        return;
+    }
+
+    $this->validate([
+        'berkas_upload' => 'required|file|mimes:pdf|max:5120',
+        'jenis_dipilih' => 'required|string',
+        'nama_berkas_dipilih' => 'required|string',
+    ]);
+
+    $jenis = \App\Models\JenisBelanjaPelaporan::where('nama', $this->jenis_dipilih)->first();
+
+    if (!$jenis) {
+        $this->addError('jenis_dipilih', 'Jenis belanja tidak ditemukan.');
+        return;
+    }
+
+    $template = \App\Models\TemplateBerkasBelanja::where('jenis_belanja_id', $jenis->id)
+        ->where('nama_berkas', $this->nama_berkas_dipilih)
+        ->first();
+
+    if (!$template) {
+        $this->addError('nama_berkas_dipilih', 'Template berkas tidak ditemukan.');
+        return;
+    }
+
+    $ada = \App\Models\BerkasPelaporan::where('pelaporan_id', $this->pelaporan_id_aktif)
+        ->where('template_berkas_id', $template->id)
+        ->exists();
+
+    if ($ada) {
+        $this->addError('nama_berkas_dipilih', 'Berkas ini sudah diunggah sebelumnya.');
+        return;
+    }
+
+    $path = $this->berkas_upload->store('pelaporan', 'public');
+
+    \App\Models\BerkasPelaporan::create([
+        'pelaporan_id' => $this->pelaporan_id_aktif,
+        'template_berkas_id' => $template->id,
+        'nama_file' => $this->berkas_upload->getClientOriginalName(),
+        'path_file' => $path,
+        'size_file' => $this->berkas_upload->getSize(),
+    ]);
+
+    $this->reset(['berkas_upload', 'nama_berkas_dipilih']);
+
+    $this->dispatchBrowserEvent('notify', ['title' => 'Berkas berhasil diupload']);
+}
+
+
+    public function submit()
+{
+    $this->validate($this->rules() + [
+        'berkas_upload' => 'required|file|mimes:pdf|max:5120',
+        'nama_berkas_dipilih' => 'required|string',
+    ]);
+
+    // Simpan pelaporan utama
+    $filePath = $this->file_upload?->store('pelaporan', 'public');
+
+    $pelaporan = Pelaporan::create([
+        'pptk_id' => $this->pptk_id,
+        'kegiatan_id' => $this->kegiatan_id,
+        'subkegiatan_id' => $this->subkegiatan_id,
+        'jenis_belanja' => $this->jenis_dipilih,
+        'rekening_kegiatan' => $this->rekening_kegiatan,
+        'tahun' => $this->tahun_input,
+        'nominal_pagu' => $this->nominal_pagu,
+        'nominal' => $this->nominal,
+        'status' => 'Diajukan',
+        'file_path' => $filePath,
+        'catatan' => $this->catatan,
+    ]);
+
+    $this->pelaporan_id_aktif = $pelaporan->id;
+
+    // Simpan berkas tambahan jika dipilih
+    if ($this->berkas_upload && $this->nama_berkas_dipilih) {
+        $jenis = JenisBelanjaPelaporan::where('nama', $this->jenis_dipilih)->first();
+        $template = TemplateBerkasBelanja::where('jenis_belanja_id', $jenis->id)
+            ->where('nama_berkas', $this->nama_berkas_dipilih)
+            ->first();
+
+        if ($template) {
+            $path = $this->berkas_upload->store('pelaporan', 'public');
+
+            BerkasPelaporan::create([
+                'pelaporan_id' => $pelaporan->id,
+                'template_berkas_id' => $template->id,
+                'nama_file' => $this->berkas_upload->getClientOriginalName(),
+                'path_file' => $path,
+                'size_file' => $this->berkas_upload->getSize(),
+            ]);
+        }
+    }
+
+    $this->dispatch('notify', title: 'Pelaporan dan berkas berhasil disimpan.');
     $this->resetForm();
 }
 
@@ -182,42 +245,32 @@ foreach ($templates as $template) {
     public function resetForm()
     {
         $this->reset([
-            'showModal',
-            'pptk_id',
-            'kegiatan_id',
-            'subkegiatan_id',
-            'jenis_belanja',
-            'rekening_kegiatan',
-            'tahun_input',
-            'nominal_pagu',
-            'nominal',
-            'file_upload',
-            'catatan',
-            'editingId',
-            'berkas',
+            'showModal', 'pptk_id', 'kegiatan_id', 'subkegiatan_id',
+            'rekening_kegiatan', 'tahun_input', 'nominal_pagu', 'nominal',
+            'file_upload', 'catatan', 'editingId', 'jenis_dipilih',
+            'jenis_belanja_terpilih', 'requiredBerkas', 'berkas_per_jenis',
+            'nama_berkas_dipilih', 'berkas_upload', 'pelaporan_id_aktif'
         ]);
     }
 
     public function edit($id)
     {
         $laporan = Pelaporan::findOrFail($id);
-
         $this->resetErrorBag();
         $this->resetValidation();
 
         $this->showModal = true;
-
-        $this->pptk_id           = $laporan->pptk_id;
-        $this->kegiatan_id       = $laporan->kegiatan_id;
-        $this->subkegiatan_id    = $laporan->subkegiatan_id;
-        $this->jenis_belanja     = $laporan->jenis_belanja;
-        $this->rekening_kegiatan = $laporan->rekening_kegiatan;
-        $this->tahun_input       = $laporan->tahun;
-        $this->nominal_pagu      = $laporan->nominal_pagu;
-        $this->nominal           = $laporan->nominal;
-        $this->catatan           = $laporan->catatan;
-
         $this->editingId = $laporan->id;
+
+        $this->pptk_id = $laporan->pptk_id;
+        $this->kegiatan_id = $laporan->kegiatan_id;
+        $this->subkegiatan_id = $laporan->subkegiatan_id;
+        $this->rekening_kegiatan = $laporan->rekening_kegiatan;
+        $this->tahun_input = $laporan->tahun;
+        $this->nominal_pagu = $laporan->nominal_pagu;
+        $this->nominal = $laporan->nominal;
+        $this->catatan = $laporan->catatan;
+        $this->jenis_dipilih = $laporan->jenis_belanja;
     }
 
     public function triggerDelete($id)
@@ -229,63 +282,6 @@ foreach ($templates as $template) {
     {
         $laporan = Pelaporan::findOrFail($id);
         $laporan->delete();
-
         $this->dispatch('notify', title: 'Laporan berhasil dihapus.');
     }
-
-   public function updatedJenisBelanjaTerpilih()
-{
-    $templates = TemplateBerkasBelanja::whereIn('jenis_belanja', $this->jenis_belanja_terpilih)->get();
-
-    $this->requiredBerkas = [];
-    foreach ($templates as $item) {
-        $this->requiredBerkas[$item->jenis_belanja][] = $item->nama_berkas;
-    }
-}
-
-
-
-public function loadTemplateBerkas()
-{
-    $this->requiredBerkas = [];
-
-    if (!empty($this->jenis_belanja_terpilih)) {
-        $templates = TemplateBerkasBelanja::whereIn('jenis_belanja', $this->jenis_belanja_terpilih)->get();
-
-        foreach ($templates as $template) {
-            $this->requiredBerkas[$template->jenis_belanja][] = $template->nama_berkas;
-        }
-    }
-}
-
-public function uploadSatuBerkas()
-{
-    $this->validate([
-        'berkas_upload' => 'required|file|mimes:pdf|max:5120',
-        'jenis_dipilih' => 'required|string',
-        'nama_berkas_dipilih' => 'required|string',
-    ]);
-
-    $path = $this->berkas_upload->store('pelaporan', 'public');
-
-    BerkasPelaporan::create([
-        'pelaporan_id' => $this->pelaporan_id_aktif, // ID pelaporan sedang aktif
-        'jenis_belanja' => $this->jenis_dipilih,
-        'nama_berkas' => $this->nama_berkas_dipilih,
-        'file_path' => $path,
-    ]);
-
-    // Reset input
-    $this->reset(['berkas_upload', 'nama_berkas_dipilih']);
-
-    $this->dispatchBrowserEvent('notify', ['title' => 'Berkas berhasil diupload']);
-}
-
-public function user()
-{
-    return $this->belongsTo(User::class, 'pptk_id');
-}
-
-
-
 }

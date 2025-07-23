@@ -4,6 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
+
 return new class extends Migration
 {
     /**
@@ -15,6 +16,9 @@ return new class extends Migration
             $table->id();
             $table->integer('tahun'); // Kolom tahun INT(11)
             $table->decimal('total_pagu', 15, 2); // Kolom total_pagu DECIMAL(15,2)
+            $table->foreignId('subkegiatan_id')
+                ->constrained('subkegiatans')
+                ->onDelete('cascade');
             $table->timestamp('created_at')->useCurrent(); // Kolom created_at default CURRENT_TIMESTAMP
         });
     }

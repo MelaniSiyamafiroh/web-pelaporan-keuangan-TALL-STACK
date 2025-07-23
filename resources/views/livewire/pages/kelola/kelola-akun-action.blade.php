@@ -1,13 +1,11 @@
-<div class="flex gap-2">
-    <button wire:click="$dispatch('edit-User', { id: {{ $User->id }} })"
-        class="text-yellow-600 hover:text-yellow-800">
-        <i class="fas fa-edit"></i> Edit
-    </button>
 
-    <button wire:click="$emit('destroy', {{ $User->id }})"
-        onclick="confirm('Yakin ingin menghapus kegiatan ini?') || event.stopImmediatePropagation()"
-        class="text-red-600 hover:text-red-800">
-        <i class="fas fa-trash"></i> Hapus
-    </button>
+
+<div class="flex justify-end space-x-1">
+    <x-button-circle wireclick="$dispatchTo('pages.kelola.kelola-akun-page', 'edit', { id: {{$value}} })">
+        <x-fas-edit class="h-3 w-3 text-white" />
+    </x-button-circle>
+    <x-button-circle color="red-500"  onclick="isConfirmOpen=true"
+        wireclick="$dispatchTo('pages.kelola.kelola-akun-page', 'confirm', { id: {{$value}} })">
+        <x-fas-trash class="h-3 w-3 text-white" />
+    </x-button-circle>
 </div>
-)

@@ -22,7 +22,7 @@
     <!-- Filter -->
     <div class="flex flex-col md:flex-row md:items-center gap-2 mb-4">
         <div class="flex-1">
-            <select wire:model="kegiatan_id" class="form-select w-full">
+            <select wire:model.defer="kegiatan_id" class="form-select w-full">
                 <option value="">-- Semua Kegiatan --</option>
                 @foreach ($kegiatan as $k)
                     <option value="{{ $k->id }}">{{ $k->nama_kegiatan }}</option>
@@ -31,12 +31,12 @@
         </div>
 
         <div class="flex-1">
-            <input type="number" wire:model="tahun_anggaran" placeholder="Tahun Anggaran"
+            <input type="number" wire:model.defer="tahun_anggaran" placeholder="Tahun Anggaran"
                 class="form-input w-full" />
         </div>
 
         <div class="flex-1">
-            <select wire:model="sort" class="form-select w-full">
+            <select wire:model.defer="sort" class="form-select w-full">
                 <option value="created_desc">Terbaru</option>
                 <option value="created_asc">Terlama</option>
                 <option value="nama_asc">Nama A-Z</option>
@@ -45,7 +45,8 @@
         </div>
 
         <div>
-            <button wire:click="$refresh" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-md transition">
+            <button wire:click="$refresh"
+                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg shadow-md transition">
                 <i class="fas fa-check mr-1"></i> Terapkan
             </button>
         </div>
@@ -101,24 +102,39 @@
             <form wire:submit.prevent="{{ $edit_id ? 'update' : 'store' }}">
                 <div class="mb-4">
                     <label class="block text-sm font-medium">Nama Sub Kegiatan</label>
-                    <input type="text" wire:model="nama_subkegiatan" class="form-input w-full">
+                    <input type="text" wire:model.defer="nama_subkegiatan" class="form-input w-full">
                     @error('nama_subkegiatan') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                 </div>
+
                 <div class="mb-4">
                     <label class="block text-sm font-medium">Kegiatan</label>
-                    <select wire:model="kegiatan_id" class="form-select w-full">
+                    <select wire:model.defer="kegiatan_id" class="form-select w-full">
                         <option value="">-- Pilih Kegiatan --</option>
                         @foreach ($kegiatan as $k)
                             <option value="{{ $k->id }}">{{ $k->nama_kegiatan }}</option>
                         @endforeach
                     </select>
-                    @error('') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                    @error('kegiatan_id') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                 </div>
+
                 <div class="mb-4">
                     <label class="block text-sm font-medium">Tahun Anggaran</label>
-                    <input type="number" wire:model="tahun_anggaran" class="form-input w-full">
+                    <input type="number" wire:model.defer="tahun_anggaran" class="form-input w-full">
                     @error('tahun_anggaran') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
                 </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-medium">Rekening</label>
+                    <input type="text" wire:model.defer="rekening" class="form-input w-full">
+                    @error('rekening') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                </div>
+
+                <div class="mb-4">
+                    <label class="block text-sm font-medium">Jumlah Pagu</label>
+                    <input type="number" wire:model.defer="jumlah_pagu" class="form-input w-full" step="0.01">
+                    @error('jumlah_pagu') <span class="text-red-500 text-sm">{{ $message }}</span> @enderror
+                </div>
+
                 <div class="flex justify-end">
                     <button type="button" @click="openModal = false" class="px-4 py-2 bg-gray-300 rounded mr-2">Batal</button>
                     <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Simpan</button>

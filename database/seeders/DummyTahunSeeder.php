@@ -8,6 +8,7 @@ use App\Models\Subkegiatan;
 use App\Models\Pelaporan;
 use App\Models\User;
 use App\Models\SatuanKerja;
+use App\Models\JenisBelanjaPelaporan;
 
 class DummyTahunSeeder extends Seeder
 {
@@ -21,37 +22,43 @@ class DummyTahunSeeder extends Seeder
             foreach ($satuanKerjas as $sk) {
                 // Buat kegiatan
                 $kegiatan = Kegiatan::create([
-                    'nama_kegiatan' => "Kegiatan {$sk->nama} $tahun",
+                    'nama_kegiatan' => "Kegiatan {$sk->nama} {$tahun}",
                     'tahun' => $tahun,
-                    'satuan_kerja' => $sk->nama,
+                    'satuan_kerja_id' => $sk->id,
+                    'created_at' => now(),
+                    'updated_at' => now()
                 ]);
 
                 // Buat subkegiatan
                 $subkegiatan = Subkegiatan::create([
                     'kegiatan_id' => $kegiatan->id,
-                    'nama_subkegiatan' => "Subkegiatan {$sk->nama} $tahun",
+                    'nama_subkegiatan' => "Subkegiatan {$sk->nama} {$tahun}",
                     'tahun_anggaran' => $tahun,
-                    'rekening' => rand(100, 999),
-                    'jumlah_pagu' => rand(5, 20) * 1000000,
+                    'rekening' => '5.1.2.03.01',
+                    'jumlah_pagu' => rand(5, 20) * 1_000_000,
                 ]);
 
-                // Cari user PPTK yang satuan_kerja_id-nya cocok
+                // Cari user PPTK
                 $pptk = User::where('satuan_kerja_id', $sk->id)
                     ->whereHas('roles', function ($q) {
                         $q->where('name', 'like', 'pptk%');
                     })
                     ->first();
 
-                if ($pptk) {
+                // Ambil jenis belanja secara acak (jika ada)
+                $jenisBelanja = JenisBelanjaPelaporan::inRandomOrder()->first();
+
+                if ($pptk && $jenisBelanja) {
                     Pelaporan::create([
-                        'subkegiatan_id' => $subkegiatan->id,
-                        'kegiatan_id' => '1' ,
-                        'pptk_id' => $pptk->id,
-                        'status' => 'diajukan',
-                        'tahun' => 2024,
-                        'rekening_kegiatan' => '5.1.2.03.01',
-                        'nominal_pagu' => 50000000, // tambahkan ini
-                        'nominal' => 0, // ← nominal realisasi awal (bisa 0 dulu)
+                        'subkegiatan_id'     => $subkegiatan->id,
+                        'kegiatan_id'        => $kegiatan->id,
+                        'pptk_id'            => $pptk->id,
+                        'status'             => 'diajukan',
+                        'tahun'              => $tahun,
+                        'jenis_belanja_id'   => $jenisBelanja->id,
+                        'rekening_kegiatan'  => $subkegiatan->rekening,
+                        'nominal_pagu'       => $subkegiatan->jumlah_pagu,
+                        'nominal'            => 0,
                     ]);
                 }
             }

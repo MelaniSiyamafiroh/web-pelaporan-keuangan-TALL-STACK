@@ -15,7 +15,7 @@ class Pelaporan extends Model
         'pptk_id',
         'kegiatan_id',
         'subkegiatan_id',
-        'jenis_belanja',
+        'jenis_belanja_id',
         'rekening_kegiatan',
         'tahun',
         'nominal_pagu',
@@ -37,43 +37,26 @@ class Pelaporan extends Model
 
     public function kegiatan()
     {
-        return $this->belongsTo(Kegiatan::class, 'kegiatan_id');
+        return $this->belongsTo(Kegiatan::class);
     }
 
     public function subkegiatan()
     {
-        return $this->belongsTo(Subkegiatan::class, 'subkegiatan_id');
+        return $this->belongsTo(Subkegiatan::class);
+    }
+
+    public function jenisBelanja()
+    {
+        return $this->belongsTo(JenisBelanjaPelaporan::class);
+    }
+
+    public function berkasPelaporans()
+    {
+        return $this->hasMany(BerkasPelaporan::class);
     }
 
     public function laporanTahunan()
     {
-        return $this->belongsTo(LaporanTahunan::class, 'laporan_tahunan_id');
-    }
-
-    public function berkas()
-    {
-        return $this->hasMany(Berkas::class, 'pelaporan_id');
-    }
-
-    public function berkasPelaporan()
-{
-    return $this->hasMany(BerkasPelaporan::class);
-}
-
-
-    public function verifikasi()
-    {
-        return $this->hasMany(VerifikasiLaporan::class, 'pelaporan_id');
-    }
-
-    // =============================
-    // Scope
-    // =============================
-
-    public function scopeTahunAktif($query)
-    {
-        return $query->whereHas('subkegiatan', function ($q) {
-            $q->where('tahun_anggaran', session('tahun_aktif'));
-        });
+        return $this->belongsTo(LaporanTahunan::class);
     }
 }
